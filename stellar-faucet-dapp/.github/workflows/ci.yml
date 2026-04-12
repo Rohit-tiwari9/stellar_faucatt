@@ -1,0 +1,253 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: '20'
+  RUST_VERSION: stable
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+# ─────────────────────────────────────────────────────────────────────────────
+
+  # ── 1. Lint & check Rust contract ────────────────────────────────────────
+  contract-lint:
+    name: Contract — Lint & Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path contracts/faucet/Cargo.toml -- --check
+
+      - name: Clippy (WASM target)
+        run: |
+          cargo clippy \
+            --manifest-path contracts/faucet/Cargo.toml \
+            --target wasm32-unknown-unknown \
+            --no-default-features \
+            -- -D warnings
+
+      - name: Check compiles for WASM
+        run: |
+          cargo check \
+            --manifest-path contracts/faucet/Cargo.toml \
+            --target wasm32-unknown-unknown \
+            --no-default-features
+
+  # ── 2. Run Rust contract tests ───────────────────────────────────────────
+  contract-test:
+    name: Contract — Tests (8 tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Run contract tests
+        run: |
+          cargo test \
+            --manifest-path contracts/faucet/Cargo.toml \
+            -- --nocapture --test-threads=1
+        env:
+          RUST_BACKTRACE: 1
+
+  # ── 3. Build WASM release artifact ──────────────────────────────────────
+  contract-build:
+    name: Contract — Build WASM
+    runs-on: ubuntu-latest
+    needs: [contract-lint, contract-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build release WASM
+        run: |
+          cargo build \
+            --manifest-path contracts/faucet/Cargo.toml \
+            --target wasm32-unknown-unknown \
+            --release
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: faucet-wasm
+          path: target/wasm32-unknown-unknown/release/faucet.wasm
+          retention-days: 7
+
+  # ── 4. Frontend type-check ───────────────────────────────────────────────
+  frontend-typecheck:
+    name: Frontend — TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  # ── 5. Frontend tests ────────────────────────────────────────────────────
+  frontend-test:
+    name: Frontend — Tests (15+ tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest tests
+        run: npm test
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  # ── 6. Frontend build ────────────────────────────────────────────────────
+  frontend-build:
+    name: Frontend — Next.js Build
+    runs-on: ubuntu-latest
+    needs: [frontend-typecheck, frontend-test]
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_STELLAR_NETWORK: testnet
+      NEXT_PUBLIC_STELLAR_RPC_URL: https://soroban-testnet.stellar.org
+      NEXT_PUBLIC_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+      NEXT_PUBLIC_FAUCET_CONTRACT_ID: CDUMMYCONTRACTIDFORCI000000000000000000000000000000000000
+      NEXT_PUBLIC_NATIVE_TOKEN_ID: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYW
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: frontend/.next/
+          retention-days: 3
+
+  # ── 7. Deploy to Testnet (main branch only) ──────────────────────────────
+  deploy-contract:
+    name: Deploy — Stellar Testnet
+    runs-on: ubuntu-latest
+    needs: [contract-build, frontend-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: testnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Install Soroban CLI
+        run: cargo install --locked soroban-cli
+
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: faucet-wasm
+          path: target/wasm32-unknown-unknown/release/
+
+      - name: Import deployer key
+        run: |
+          echo "${{ secrets.STELLAR_DEPLOY_KEY }}" | \
+            soroban keys add deployer-key --stdin
+
+      - name: Deploy contract
+        run: chmod +x scripts/deploy.sh && ./scripts/deploy.sh
+        env:
+          STELLAR_DEPLOY_KEY: ${{ secrets.STELLAR_DEPLOY_KEY }}

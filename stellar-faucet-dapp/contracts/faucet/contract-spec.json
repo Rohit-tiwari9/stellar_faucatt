@@ -1,0 +1,117 @@
+{
+  "contract_name": "stellar-faucet",
+  "version": "0.1.0",
+  "network": "testnet",
+  "rpc_url": "https://soroban-testnet.stellar.org",
+  "network_passphrase": "Test SDF Network ; September 2015",
+  "functions": [
+    {
+      "name": "initialize",
+      "description": "Initialize the faucet contract (call once after deploy)",
+      "inputs": [
+        { "name": "admin",            "type": "Address" },
+        { "name": "faucet_amount",    "type": "Option<i128>",  "default": 100000000 },
+        { "name": "cooldown_seconds", "type": "Option<u64>",   "default": 60 }
+      ],
+      "outputs": [],
+      "auth_required": ["admin"],
+      "mutating": true
+    },
+    {
+      "name": "request_funds",
+      "description": "Request testnet XLM. Rate limited per wallet.",
+      "inputs": [
+        { "name": "user",     "type": "Address" },
+        { "name": "token_id", "type": "Address" }
+      ],
+      "outputs": [{ "type": "i128", "description": "Amount transferred in stroops" }],
+      "auth_required": ["user"],
+      "mutating": true,
+      "events": ["faucet:requested", "faucet:sent", "faucet:rejected", "faucet:empty"]
+    },
+    {
+      "name": "get_last_request",
+      "description": "Get the Unix timestamp of the user's last successful request",
+      "inputs": [{ "name": "user", "type": "Address" }],
+      "outputs": [{ "type": "Option<u64>", "description": "Unix timestamp, or None if never requested" }],
+      "auth_required": [],
+      "mutating": false
+    },
+    {
+      "name": "get_request_count",
+      "description": "Get the number of successful requests made by this wallet",
+      "inputs": [{ "name": "user", "type": "Address" }],
+      "outputs": [{ "type": "u64" }],
+      "auth_required": [],
+      "mutating": false
+    },
+    {
+      "name": "get_global_count",
+      "description": "Get the total number of requests across all wallets",
+      "inputs": [],
+      "outputs": [{ "type": "u64" }],
+      "auth_required": [],
+      "mutating": false
+    },
+    {
+      "name": "get_cooldown_remaining",
+      "description": "Get seconds remaining before this wallet can request again (0 = ready)",
+      "inputs": [{ "name": "user", "type": "Address" }],
+      "outputs": [{ "type": "u64", "description": "Seconds remaining, 0 if ready" }],
+      "auth_required": [],
+      "mutating": false
+    },
+    {
+      "name": "get_faucet_amount",
+      "description": "Get current drip amount in stroops (1 XLM = 10,000,000 stroops)",
+      "inputs": [],
+      "outputs": [{ "type": "i128" }],
+      "auth_required": [],
+      "mutating": false
+    },
+    {
+      "name": "set_faucet_amount",
+      "description": "Admin: update the drip amount per request",
+      "inputs": [
+        { "name": "admin",  "type": "Address" },
+        { "name": "amount", "type": "i128" }
+      ],
+      "outputs": [],
+      "auth_required": ["admin"],
+      "mutating": true
+    },
+    {
+      "name": "set_cooldown",
+      "description": "Admin: update the rate-limit cooldown window",
+      "inputs": [
+        { "name": "admin",   "type": "Address" },
+        { "name": "seconds", "type": "u64" }
+      ],
+      "outputs": [],
+      "auth_required": ["admin"],
+      "mutating": true
+    }
+  ],
+  "storage": [
+    { "key": "LastRequest(Address)",  "scope": "Persistent", "type": "u64",  "description": "Unix timestamp of last successful request per wallet" },
+    { "key": "RequestCount(Address)", "scope": "Persistent", "type": "u64",  "description": "Per-wallet successful request counter" },
+    { "key": "GlobalCount",           "scope": "Instance",   "type": "u64",  "description": "Total requests across all wallets" },
+    { "key": "Admin",                 "scope": "Instance",   "type": "Address" },
+    { "key": "FaucetAmount",          "scope": "Instance",   "type": "i128", "description": "Stroops per request" },
+    { "key": "CooldownSeconds",       "scope": "Instance",   "type": "u64",  "description": "Rate-limit window in seconds" },
+    { "key": "Initialized",           "scope": "Instance",   "type": "bool", "description": "Init guard" }
+  ],
+  "events": [
+    { "topic": ["faucet","init"],      "data": "(Address, i128, u64)",         "description": "Contract initialized" },
+    { "topic": ["faucet","requested"], "data": "Address",                      "description": "Request received, before transfer" },
+    { "topic": ["faucet","sent"],      "data": "(Address, i128, u64)",         "description": "Transfer successful: (user, amount, new_count)" },
+    { "topic": ["faucet","rejected"],  "data": "(Address, u64)",               "description": "Rate limited: (user, seconds_remaining)" },
+    { "topic": ["faucet","empty"],     "data": "i128",                         "description": "Insufficient balance: current_balance" }
+  ],
+  "error_cases": [
+    { "trigger": "request_funds called within cooldown window", "panic": "rate limited: N seconds remaining" },
+    { "trigger": "contract token balance < faucet_amount",      "panic": "faucet insufficient funds: balance=N" },
+    { "trigger": "initialize called more than once",            "panic": "already initialized" },
+    { "trigger": "set_faucet_amount/set_cooldown by non-admin", "panic": "unauthorized" }
+  ]
+}

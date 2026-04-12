@@ -1,0 +1,45 @@
+# ── Rust / Cargo ────────────────────────────────
+target/
+**/*.rs.bk
+Cargo.lock         # keep for binaries; for library crates this is optional
+
+# ── Soroban ─────────────────────────────────────
+.soroban/
+*.wasm
+*.optimized.wasm
+
+# ── Secrets ─────────────────────────────────────
+.stellar_deploy_key
+*.pem
+*.key
+*.secret
+
+# ── Node / Next.js ──────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+frontend/coverage/
+frontend/*.tsbuildinfo
+
+# ── Environment files ────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ── Editors / OS ────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# ── Logs ────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
