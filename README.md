@@ -6,6 +6,8 @@
 [![Stellar Network](https://img.shields.io/badge/Network-Stellar%20Testnet-7c3aed)](https://stellar.org)
 [![Smart Contract](https://img.shields.io/badge/Contract-Soroban-3461f5)](https://soroban.stellar.org)
 
+https://stellar-faucatt.vercel.app/
+
 ---
 
 ## 🌌 Project Overview
