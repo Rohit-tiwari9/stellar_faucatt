@@ -6,6 +6,8 @@
 [![Stellar Network](https://img.shields.io/badge/Network-Stellar%20Testnet-7c3aed)](https://stellar.org)
 [![Smart Contract](https://img.shields.io/badge/Contract-Soroban-3461f5)](https://soroban.stellar.org)
 
+https://stellar-faucatt.vercel.app/
+
 ---
 
 ## 🌌 Project Overview
@@ -297,6 +299,19 @@ npm run dev
 4. Get testnet XLM: https://friendbot.stellar.org?addr=YOUR_PUBLIC_KEY
 
 ---
+screenshots/
+<img width="1915" height="962" alt="Request XLM" src="https://github.com/user-attachments/assets/31311011-9b93-4446-ae1c-cea5eef0f41c" />
+<img width="1917" height="971" alt="Homepage with wallet" src="https://github.com/user-attachments/assets/fee3f335-8ea5-4f03-8674-51a8fd845f5e" />
+<img width="1919" height="1078" alt="Tanstack details" src="https://github.com/user-attachments/assets/5d386789-03e6-419e-9364-d36092458c95" />
+<img width="1919" height="962" alt="Stats" src="https://github.com/user-attachments/assets/d834570b-1ad2-49a6-a336-aaa927b2c80f" />
+
+----
+demo/
+
+
+https://github.com/user-attachments/assets/49883152-0f63-4d87-9a95-d89986ed232f
+
+
 
 ## 📊 Features
 
