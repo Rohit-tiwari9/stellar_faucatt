@@ -1,17 +1,20 @@
-// ─────────────────────────────────────────────
-//  Wallet
-// ─────────────────────────────────────────────
+// src/types/index.ts
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  WALLET
+// ─────────────────────────────────────────────────────────────────────────────
 export interface WalletState {
-  connected: boolean;
-  publicKey: string | null;
-  network: string | null;
-  loading: boolean;
-  error: string | null;
+  connected:  boolean;
+  publicKey:  string | null;
+  network:    string | null;
+  loading:    boolean;
+  error:      string | null;
+  installed:  boolean | null; // null = still detecting
 }
 
-// ─────────────────────────────────────────────
-//  Faucet
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  FAUCET
+// ─────────────────────────────────────────────────────────────────────────────
 export type TxStatus =
   | 'idle'
   | 'signing'
@@ -21,39 +24,28 @@ export type TxStatus =
   | 'error';
 
 export interface FaucetRequest {
-  id: string;
-  txHash: string;
-  amount: string;     // in XLM
-  timestamp: number;  // unix ms
-  status: 'success' | 'error';
-  address: string;
+  id:        string;
+  txHash:    string;
+  amount:    string;      // XLM string e.g. "10.0"
+  timestamp: number;      // unix milliseconds
+  status:    'success' | 'error';
+  address:   string;
 }
 
 export interface FaucetStats {
-  lastRequestTimestamp: number | null;  // unix seconds
-  requestCount: number;
-  globalCount: number;
-  cooldownRemaining: number;            // seconds
-  faucetAmount: string;                 // XLM
-  contractBalance: string;             // XLM
+  lastRequestTimestamp: number | null;  // unix seconds from contract
+  requestCount:         number;         // per-wallet count
+  globalCount:          number;         // total across all wallets
+  cooldownRemaining:    number;         // seconds until next request allowed
+  faucetAmount:         string;         // XLM per request e.g. "10.0"
+  contractBalance:      string;         // current faucet XLM balance
 }
 
-// ─────────────────────────────────────────────
-//  Contract
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONTRACT
+// ─────────────────────────────────────────────────────────────────────────────
 export interface ContractCallResult {
-  txHash: string;
-  amount: bigint;
+  txHash:  string;
+  amount:  bigint;   // in stroops
   success: boolean;
-}
-
-// ─────────────────────────────────────────────
-//  Analytics
-// ─────────────────────────────────────────────
-export interface AnalyticsData {
-  totalRequests: number;
-  uniqueUsers: number;
-  totalXLMDispensed: number;
-  last24hRequests: number;
-  requestsByHour: { hour: string; count: number }[];
 }
